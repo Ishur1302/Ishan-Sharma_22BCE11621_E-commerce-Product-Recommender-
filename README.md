@@ -8,7 +8,7 @@
 **Name:** Ishan Sharma  
 **Roll Number:** 22BCE11621  
 
-**GitHub Repository:** [https://github.com/Ishur1302/recommendo-scribe](https://github.com/Ishur1302/recommendo-scribe)  
+**GitHub Repository:** https://github.com/Ishur1302/Ishan-Sharma_22BCE11621_E-commerce-Product-Recommender-
 **Demo Video:** [Google Drive Demo Link](https://drive.google.com/file/d/1VLsfNkK0rzUOMqsmoJ5Zr_1GogQCd_6P/view?usp=sharing)  
 **Project Topic:** E-commerce Product Recommendation System with LLM-powered Explanations
 
