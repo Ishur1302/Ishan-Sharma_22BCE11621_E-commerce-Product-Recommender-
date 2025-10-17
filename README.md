@@ -1,130 +1,134 @@
- 
-E-Commerce Product Recommender
-Project Report
-Name: Ishan Sharma
-Roll no.: 22BCE11621
-GitHub Repo: https://github.com/Ishur1302/recommendo-scribe
-Demo Video: https://drive.google.com/file/d/1VLsfNkK0rzUOMqsmoJ5Zr_1GogQCd_6P/view?usp=sharing
-Topic: E-commerce Product Recommendation System with LLM-powered Explanations
- 
-Objective
-The aim of this project is to create an intelligent product recommender for e-commerce applications that not only suggests relevant products to users but also provides human-like, informative explanations for each recommendation using a Large Language Model (LLM). This bridges the gap between purely algorithmic suggestions and personalized reasoning, thereby improving user trust and satisfaction.
- 
-Scope of Work
-•	Input:
-o	Product catalog (details, categories, prices, images, etc.)
-o	User behavioral data (search history, previous purchases, clicks, wishlist, etc.)
-•	Output:
-o	Recommended products personalized to each user
-o	LLM-generated explanation describing “Why this product?” based on user context and behavior
-•	Frontend Dashboard (Optional):
-o	A UI to visualize recommendations and their explanations for each user
- 
-Technical Architecture
-•	Backend API:
-Serves as the core engine for accepting input, computing recommendations, and serving LLM-generated explanations. Built with a modern stack (Node.js/TypeScript + Express or FastAPI).
-•	Database:
-Stores products, user information, and historical interaction data. Recommended choices are MongoDB or PostgreSQL for flexibility and scalability.
-•	Recommendation Logic:
-Uses collaborative filtering and/or content-based filtering. Typical libraries include LightFM, Surprise, or custom ML logic.
-•	LLM Integration:
-Calls the LLM API (e.g., OpenAI GPT, Llama, or other) to generate context-specific natural language explanations for each recommended product.
- 
-Example LLM Prompt
-Explain why product X is recommended to this user based on their behavior.
-Output example:
-“Product X is suggested for you as you've previously shown interest in electronics, and this item matches your price preferences and past purchase trends.”
- 
-Deliverables
-•	Properly structured GitHub repository with source code, documentation, and clear commit history:
-https://github.com/Ishur1302/recommendo-scribe
-•	Detailed README file explaining setup, usage, database schema, and API endpoints.
-•	Demo video giving a walk-through of recommendation scenarios and explanation logic:
-https://drive.google.com/file/d/1VLsfNkK0rzUOMqsmoJ5Zr_1GogQCd_6P/view?usp=sharing
- 
-Recommendation System Methodology
-•	Collaborative Filtering:
-The system analyzes user behavior and compares it with behavior of other users to generate recommendations. For example, if User A and User B liked similar products, User B might get products User A checked out.
-•	Content-Based Filtering:
-The attributes of each product and user preferences are matched. So if a user likes budget clothing, similar new arrivals are prioritized.
-•	Hybrid Approach:
-Combines both collaborative and content-based filtering for better accuracy, especially for new users or sparse behavior cases.
-•	Explanations Using LLM:
-Each recommendation comes with an explanation generated in plain language. The backend passes user behavior and product attributes to the LLM to create customized, friendly responses.
- 
-Example User Flow
-1.	User logs into the app.
-2.	System analyzes prior searches, purchases, and page views.
-3.	API runs recommendation logic to pick top items.
-4.	For each recommendation, the system prepares a descriptive context (user’s preferences, product features, history) and sends this to the LLM.
-5.	LLM returns a friendly explanation (e.g., “This shirt matches your style and was highly rated by users similar to you”).
-6.	Frontend dashboard shows recommended items plus the “Why this product?” explanation.
- 
-Database Design
-•	Products Table/Collection:
-o	ProductID, Name, Description, Category, Price, ImageURL
-•	User Table/Collection:
-o	UserID, Email, Demographics, Preferences
-•	Interaction Table/Collection:
-o	UserID, ProductID, Action (view, purchase, wishlist), Timestamp
- 
-API Design Overview
-•	GET /recommendations?user_id=...
-Returns recommended products + explanations for the specified user.
-•	POST /user-interaction
-Records user actions for future recommendations.
-•	GET /products
-Lists all products for catalog browsing.
- 
-LLM Guidance and Prompt Engineering
-•	Prompts are automatically constructed using user’s context and candidate product features.
-•	Example prompt:
-“Explain why product Headphones XYZ is recommended to a user who recently purchased earphones and browsed Bluetooth gadgets.”
-•	Returned explanations are checked for clarity and personalization.
- 
-Evaluation Focus
-•	Recommendation Accuracy:
-Assessed based on how closely suggestions match actual user interests.
-•	LLM Quality:
-Are explanations human-like, understandable, and personalized?
-•	Code Design:
-Clean structure, modularity, maintainability.
-•	Documentation:
-Repository should contain descriptive README, code comments, setup instructions, and usage examples.
- 
-Deployment Details
-•	Deployable via cloud platforms (Vercel, Netlify, AWS, Render, etc.).
-•	Database hosted on managed services (MongoDB Atlas or AWS RDS).
-•	LLM access via API (e.g., OpenAI, Cohere, or local LLM if self-hosted).
- 
-
-Conclusion
-This e-commerce recommender system provides highly relevant suggestions combined with natural language explanations powered by LLM. It bridges AI-driven personalization and transparent, user-friendly communication, paving the way for intelligent retail experiences.
- 
-
-<img width="468" height="630" alt="image" src="https://github.com/user-attachments/assets/786a6d5b-30c9-4362-a502-bdab79d7a848" />
 
 
+***
+
+# E-Commerce Product Recommender  
+## Project Report
+
+**Name:** Ishan Sharma  
+**Roll Number:** 22BCE11621  
+
+**GitHub Repository:** [https://github.com/Ishur1302/recommendo-scribe](https://github.com/Ishur1302/recommendo-scribe)  
+**Demo Video:** [Google Drive Demo Link](https://drive.google.com/file/d/1VLsfNkK0rzUOMqsmoJ5Zr_1GogQCd_6P/view?usp=sharing)  
+**Project Topic:** E-commerce Product Recommendation System with LLM-powered Explanations
+
+***
+
+## Objective  
+This project aims to develop an intelligent product recommendation system for e-commerce platforms. It not only suggests relevant products based on user data but also generates human-like, informative explanations for the recommendations via a Large Language Model (LLM). This approach enhances user trust by providing understandable reasons for each suggestion.
+
+***
+
+## Scope of Work  
+- **Input:**  
+  - Product catalog containing details, categories, prices, images etc.  
+  - User behavioral data including search history, previous purchases, clicks, wishlist, and more.
+
+- **Output:**  
+  - Personalized product recommendations tailored to each user.  
+  - LLM-generated explanations clarifying "Why this product?" based on user context.
+
+- **Frontend Dashboard (Optional):**  
+  - UI to view recommended products and their explanations.
+
+***
+
+## Technical Architecture  
+- **Backend API:** Built with Node.js/TypeScript and Express or FastAPI for processing inputs and generating recommendations and explanations.  
+- **Database:** Uses MongoDB or PostgreSQL to store product info, user data, and interaction logs.  
+- **Recommendation Logic:** Combines collaborative filtering and content-based filtering (using libraries like LightFM or Surprise).  
+- **LLM Integration:** Utilizes APIs like OpenAI GPT or Llama models to produce detailed descriptive explanations.
+
+***
+
+## Example Prompt for LLM  
+"Explain why product X is recommended to this user based on their behavior."  
+
+**Example Output:**  
+"Product X is suggested because you have previously shown interest in electronics, and this product aligns with your preferred price range and past purchases."
+
+***
+
+## Deliverables  
+- Well-structured GitHub repository with source code and documentation.  
+- Detailed README including setup and usage instructions.  
+- Demo video showcasing recommendation scenarios and LLM explanations.
+
+***
+
+## Recommendation System Methodology  
+- **Collaborative Filtering:** Recommends products liked by users with similar interaction patterns.  
+- **Content-Based Filtering:** Matches user preferences with product attributes for personalized recommendations.  
+- **Hybrid Approach:** Uses both techniques for accuracy and better handling of sparse data.  
+- **Explanation Generation:** Each suggested product comes with a customizable natural language explanation via LLM.
+
+***
+
+## Example User Flow  
+1. User logs into the system.  
+2. User interaction history is analyzed.  
+3. Recommendations are computed based on behaviors.  
+4. Descriptive context is prepared and sent to LLM.  
+5. LLM returns personalized explanations.  
+6. Frontend displays recommended products with explanations.
+
+***
+
+## Database Design  
+- **Products:** ProductID, Name, Description, Category, Price, ImageURL  
+- **Users:** UserID, Email, Demographics, Preferences  
+- **Interactions:** UserID, ProductID, Action (view, purchase, wishlist), Timestamp  
+
+***
+
+## API Endpoints  
+- `GET /recommendations?user_id=...` — Fetch recommendations and explanations for a user.  
+- `POST /user-interaction` — Log user actions.  
+- `GET /products` — Retrieve product catalog.
+
+***
+
+## LLM and Prompt Engineering  
+- Prompts dynamically constructed from user and product data.  
+- Ensures clarity and personalization in LLM-generated explanations.
+
+***
+
+## Evaluation Criteria  
+- Accuracy of recommendations.  
+- Human-likeness and relevance of LLM explanations.  
+- Clean, modular codebase.  
+- Comprehensive documentation.
+
+***
+
+## Deployment  
+- Supports deployment on cloud platforms: Vercel, Netlify, AWS, or Render.  
+- Database hosted using managed services like MongoDB Atlas or AWS RDS.  
+- LLM accessed via API.
+
+***
+
+## How to Install and Run on Your Computer  
+
+1. Clone the repository:  
+   `git clone <YOUR_GIT_URL>`
+
+2. Navigate to the project folder:  
+   `cd <YOUR_PROJECT_NAME>`
+
+3. Install required dependencies:  
+   `npm i`
+
+4. Start the development server with hot reload:  
+   `npm run dev`
+
+Make sure [Node.js](https://nodejs.org/) and npm are installed. You can use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions easily.
+
+Open your browser and go to the URL displayed in terminal (usually http://localhost:3000) to see the application running locally.
+
+***
 
 
-
-
-How to Install and Run on Your Computer
-Clone the repository
-git clone <YOUR_GIT_URL>
-
-Navigate to the project directory
-cd <YOUR_PROJECT_NAME>
-
-Install dependencies
-npm i
-
-Start the development server with auto-reloading and instant preview
-npm run dev
-
-Make sure you have Node.js and npm installed. You can install Node.js using nvm.
-
-After running the development server, open your browser and access the URL displayed in the terminal (usually http://localhost:3000).
-
-
-
+[9](https://www.kaggle.com/code/shawamar/product-recommendation-system-for-e-commerce)
+[10](https://wangcongcong123.github.io/files/bechelor-thesis/report.pdf)
