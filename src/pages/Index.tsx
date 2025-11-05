@@ -81,14 +81,22 @@ const Index = () => {
   };
 
   const generateAIRecommendations = async () => {
-    if (!user) {
-      toast({ title: "Please sign in to get personalized recommendations" });
-      return;
-    }
-
     setLoadingRecs(true);
     try {
-      // Get user interactions
+      let recs: Recommendation[] = [] as any;
+
+      if (!user) {
+        // Guest preview mode: no writes, generate from available products only
+        recs = await generateRecommendations([], [], products);
+        setRecommendations(recs);
+        toast({
+          title: "Recommendations Ready (Preview)",
+          description: `Generated ${recs.length} picks without sign-in. Sign in to save them.`
+        });
+        return;
+      }
+
+      // Authenticated path — use interactions and persist recs
       const interactionsQuery = query(
         collection(db, 'user_interactions'),
         where('user_id', '==', user.uid)
@@ -106,8 +114,7 @@ const Index = () => {
       const viewedProducts = products.filter(p => viewedProductIds.includes(p.id));
       const cartProducts = products.filter(p => cartProductIds.includes(p.id));
 
-      // Generate recommendations using Gemini
-      const recs = await generateRecommendations(viewedProducts, cartProducts, products);
+      recs = await generateRecommendations(viewedProducts, cartProducts, products);
 
       // Delete old recommendations
       const oldRecsQuery = query(
@@ -233,23 +240,15 @@ const Index = () => {
           Experience intelligent shopping with personalized AI recommendations
         </p>
 
-        {user ? (
-          <Button 
-            onClick={generateAIRecommendations}
-            disabled={loadingRecs}
-            className="bg-gradient-primary hover:opacity-90 text-white animate-scale-in"
-            size="lg"
-          >
-            <Sparkles className="h-5 w-5 mr-2" />
-            {loadingRecs ? "Generating..." : "Get AI Recommendations"}
-          </Button>
-        ) : (
-          <Button asChild className="bg-gradient-primary hover:opacity-90 text-white animate-scale-in" size="lg">
-            <Link to="/auth">
-              Sign In for Personalized Picks
-            </Link>
-          </Button>
-        )}
+        <Button 
+          onClick={generateAIRecommendations}
+          disabled={loadingRecs}
+          className="bg-gradient-primary hover:opacity-90 text-white animate-scale-in"
+          size="lg"
+        >
+          <Sparkles className="h-5 w-5 mr-2" />
+          {loadingRecs ? "Generating..." : "Get AI Recommendations"}
+        </Button>
       </section>
 
       {/* Filters */}
