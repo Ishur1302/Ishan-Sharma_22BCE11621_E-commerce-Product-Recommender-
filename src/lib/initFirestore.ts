@@ -1,7 +1,7 @@
 import { db } from './firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 
-const SAMPLE_PRODUCTS = [
+export const SAMPLE_PRODUCTS = [
   {
     name: "Wireless Noise-Cancelling Headphones",
     category: "Electronics",

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import { SAMPLE_PRODUCTS } from "@/lib/initFirestore";
 
 interface Product {
   id: string;
@@ -55,9 +56,21 @@ const Index = () => {
   }, []);
 
   const loadProducts = async () => {
-    const snapshot = await getDocs(collection(db, 'products'));
-    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-    setProducts(data);
+    try {
+      const snapshot = await getDocs(collection(db, 'products'));
+      if (snapshot.empty) {
+        const sampleWithIds = SAMPLE_PRODUCTS.map((p, idx) => ({ ...p, id: `sample-${idx}` })) as Product[];
+        setProducts(sampleWithIds);
+        toast({ title: "Showing sample products", description: "Your database is empty. Displaying local sample data." });
+        return;
+      }
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      setProducts(data);
+    } catch (error) {
+      const sampleWithIds = SAMPLE_PRODUCTS.map((p, idx) => ({ ...p, id: `sample-${idx}` })) as Product[];
+      setProducts(sampleWithIds);
+      toast({ title: "Offline sample mode", description: "Could not load from database. Showing local sample data." });
+    }
   };
 
   const loadRecommendations = async (userId: string) => {
