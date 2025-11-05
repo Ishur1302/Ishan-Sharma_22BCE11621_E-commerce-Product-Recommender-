@@ -1,7 +1,7 @@
 import { db } from './firebase';
-import { collection, addDoc, Timestamp, getDocs } from 'firebase/firestore';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
 
-export const SAMPLE_PRODUCTS = [
+const SAMPLE_PRODUCTS = [
   {
     name: "Wireless Noise-Cancelling Headphones",
     category: "Electronics",
@@ -128,12 +128,6 @@ export const initializeFirestore = async () => {
   console.log('Initializing Firestore with sample products...');
   
   try {
-    const existing = await getDocs(collection(db, 'products'));
-    if (!existing.empty) {
-      console.log('Products already exist, skipping seed.');
-      return;
-    }
-
     const promises = SAMPLE_PRODUCTS.map(product =>
       addDoc(collection(db, 'products'), {
         ...product,
@@ -144,6 +138,6 @@ export const initializeFirestore = async () => {
     await Promise.all(promises);
     console.log('Sample products added successfully!');
   } catch (error) {
-    console.error('Error initializing Firestore (likely rules block writes):', error);
+    console.error('Error initializing Firestore:', error);
   }
 };

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
-import { collection, getDocs, addDoc, query, where, updateDoc, deleteDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, query, where, doc, getDoc, updateDoc, Timestamp, deleteDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { generateRecommendations } from "@/lib/gemini";
 import { Navbar } from "@/components/Navbar";
@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import { SAMPLE_PRODUCTS } from "@/lib/initFirestore";
 
 interface Product {
   id: string;
@@ -56,21 +55,9 @@ const Index = () => {
   }, []);
 
   const loadProducts = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, 'products'));
-      if (snapshot.empty) {
-        const sampleWithIds = SAMPLE_PRODUCTS.map((p, idx) => ({ ...p, id: `sample-${idx}` })) as Product[];
-        setProducts(sampleWithIds);
-        toast({ title: "Showing sample products", description: "Database is seeding. Refresh in a moment to see live data." });
-        return;
-      }
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-      setProducts(data);
-    } catch (error) {
-      const sampleWithIds = SAMPLE_PRODUCTS.map((p, idx) => ({ ...p, id: `sample-${idx}` })) as Product[];
-      setProducts(sampleWithIds);
-      toast({ title: "Offline mode", description: "Showing local sample data." });
-    }
+    const snapshot = await getDocs(collection(db, 'products'));
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    setProducts(data);
   };
 
   const loadRecommendations = async (userId: string) => {
@@ -81,22 +68,14 @@ const Index = () => {
   };
 
   const generateAIRecommendations = async () => {
+    if (!user) {
+      toast({ title: "Please sign in to get personalized recommendations" });
+      return;
+    }
+
     setLoadingRecs(true);
     try {
-      let recs: Recommendation[] = [] as any;
-
-      if (!user) {
-        // Guest preview mode: no writes, generate from available products only
-        recs = await generateRecommendations([], [], products);
-        setRecommendations(recs);
-        toast({
-          title: "Recommendations Ready (Preview)",
-          description: `Generated ${recs.length} picks without sign-in. Sign in to save them.`
-        });
-        return;
-      }
-
-      // Authenticated path — use interactions and persist recs
+      // Get user interactions
       const interactionsQuery = query(
         collection(db, 'user_interactions'),
         where('user_id', '==', user.uid)
@@ -114,7 +93,8 @@ const Index = () => {
       const viewedProducts = products.filter(p => viewedProductIds.includes(p.id));
       const cartProducts = products.filter(p => cartProductIds.includes(p.id));
 
-      recs = await generateRecommendations(viewedProducts, cartProducts, products);
+      // Generate recommendations using Gemini
+      const recs = await generateRecommendations(viewedProducts, cartProducts, products);
 
       // Delete old recommendations
       const oldRecsQuery = query(
@@ -177,7 +157,7 @@ const Index = () => {
 
     if (!cartSnapshot.empty) {
       const cartDoc = cartSnapshot.docs[0];
-      await updateDoc(cartDoc.ref, {
+      await updateDoc(doc(db, 'cart_items', cartDoc.id), {
         quantity: cartDoc.data().quantity + 1
       });
     } else {
@@ -240,15 +220,23 @@ const Index = () => {
           Experience intelligent shopping with personalized AI recommendations
         </p>
 
-        <Button 
-          onClick={generateAIRecommendations}
-          disabled={loadingRecs}
-          className="bg-gradient-primary hover:opacity-90 text-white animate-scale-in"
-          size="lg"
-        >
-          <Sparkles className="h-5 w-5 mr-2" />
-          {loadingRecs ? "Generating..." : "Get AI Recommendations"}
-        </Button>
+        {user ? (
+          <Button 
+            onClick={generateAIRecommendations}
+            disabled={loadingRecs}
+            className="bg-gradient-primary hover:opacity-90 text-white animate-scale-in"
+            size="lg"
+          >
+            <Sparkles className="h-5 w-5 mr-2" />
+            {loadingRecs ? "Generating..." : "Get AI Recommendations"}
+          </Button>
+        ) : (
+          <Button asChild className="bg-gradient-primary hover:opacity-90 text-white animate-scale-in" size="lg">
+            <Link to="/auth">
+              Sign In for Personalized Picks
+            </Link>
+          </Button>
+        )}
       </section>
 
       {/* Filters */}
