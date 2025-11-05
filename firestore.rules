@@ -3,10 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Products collection - read by anyone, write only by admins
+    // Products collection - read by anyone, write temporarily enabled for seeding
     match /products/{productId} {
       allow read: if true;
-      allow write: if false; // Only admins can write (manage via Firebase Console)
+      allow write: if true; // Temporarily enabled for auto-seeding
     }
     
     // User interactions - users can read/write their own
