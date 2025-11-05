@@ -60,7 +60,7 @@ export const ProductCard = ({ product, onAddToCart, isAuthenticated, recommendat
         </Link>
         
         <div className="flex flex-wrap gap-1 mb-3">
-          {product.tags.slice(0, 3).map((tag) => (
+          {(product.tags ?? []).slice(0, 3).map((tag) => (
             <Badge key={tag} variant="outline" className="text-xs">
               {tag}
             </Badge>

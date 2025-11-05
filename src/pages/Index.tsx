@@ -12,6 +12,7 @@ import { Sparkles, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { SAMPLE_PRODUCTS } from "@/lib/initFirestore";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface Product {
   id: string;
@@ -218,6 +219,8 @@ const Index = () => {
     !recommendations.some(r => r.product_id === p.id)
   );
 
+  const isSampleData = products.length > 0 && products.every(p => p.id.startsWith("sample-"));
+
   const getRecommendation = (productId: string) => 
     recommendations.find(r => r.product_id === productId);
 
@@ -280,7 +283,18 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Recommended Products */}
+      {isSampleData && (
+        <div className="container mx-auto px-4 pb-6">
+          <Alert>
+            <AlertTitle>Showing sample products</AlertTitle>
+            <AlertDescription>
+              Your Firestore 'products' collection appears empty. Add products in your Firebase Console (project: recoengine-28855) to see live data.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+ 
+       {/* Recommended Products */}
       {recommendedProducts.length > 0 && (
         <section className="container mx-auto px-4 pb-12">
           <div className="flex items-center gap-2 mb-6">
