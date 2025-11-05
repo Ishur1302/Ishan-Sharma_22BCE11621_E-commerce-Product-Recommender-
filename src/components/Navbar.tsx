@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Sparkles, User } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -13,37 +15,27 @@ export const Navbar = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      if (user) {
-        loadCartCount(user.id);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadCartCount(session.user.id);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        loadCartCount(currentUser.uid);
       } else {
         setCartCount(0);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   const loadCartCount = async (userId: string) => {
-    const { data } = await supabase
-      .from('cart_items')
-      .select('quantity')
-      .eq('user_id', userId);
-    
-    const total = data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+    const q = query(collection(db, 'cart_items'), where('user_id', '==', userId));
+    const snapshot = await getDocs(q);
+    const total = snapshot.docs.reduce((sum, doc) => sum + doc.data().quantity, 0);
     setCartCount(total);
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut(auth);
     toast({ title: "Signed out successfully" });
     navigate("/");
   };

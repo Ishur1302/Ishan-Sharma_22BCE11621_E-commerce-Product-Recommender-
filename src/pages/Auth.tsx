@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles } from "lucide-react";
@@ -23,25 +23,13 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-        toast({
-          title: "Account created!",
-          description: "You can now sign in with your credentials.",
-        });
-        setIsSignUp(false);
+        await createUserWithEmailAndPassword(auth, email, password);
+        toast({ title: "Account created successfully!" });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
+        await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Signed in successfully!" });
-        navigate("/");
       }
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -56,69 +44,61 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-4">
-            <Sparkles className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              AI Product Store
-            </span>
-          </Link>
-        </div>
+        <Link to="/" className="flex items-center gap-2 justify-center mb-8">
+          <Sparkles className="h-8 w-8 text-primary" />
+          <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+            AI Product Store
+          </span>
+        </Link>
 
-        <Card className="shadow-card">
+        <Card className="animate-fade-in">
           <CardHeader>
-            <CardTitle>{isSignUp ? "Create Account" : "Sign In"}</CardTitle>
+            <CardTitle>{isSignUp ? "Create Account" : "Welcome Back"}</CardTitle>
             <CardDescription>
               {isSignUp
-                ? "Get personalized AI recommendations"
-                : "Sign in to access your personalized picks"}
+                ? "Sign up to get personalized AI recommendations"
+                : "Sign in to access your account"}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAuth} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="email"
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
                 <Input
-                  id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>
-
               <Button
                 type="submit"
-                className="w-full bg-gradient-primary hover:opacity-90"
+                className="w-full bg-gradient-primary hover:opacity-90 text-white"
                 disabled={loading}
               >
                 {loading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
               </Button>
+            </form>
 
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
+            <div className="mt-4 text-center text-sm">
+              <button
                 onClick={() => setIsSignUp(!isSignUp)}
+                className="text-primary hover:underline"
               >
                 {isSignUp
-                  ? "Already have an account? Sign In"
-                  : "Don't have an account? Sign Up"}
-              </Button>
-            </form>
+                  ? "Already have an account? Sign in"
+                  : "Don't have an account? Sign up"}
+              </button>
+            </div>
           </CardContent>
         </Card>
       </div>

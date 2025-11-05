@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db, auth } from "@/lib/firebase";
+import { collection, getDocs, addDoc, query, where, doc, getDoc, updateDoc, Timestamp, deleteDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { generateRecommendations } from "@/lib/gemini";
 import { Navbar } from "@/components/Navbar";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -39,44 +42,32 @@ const Index = () => {
   useEffect(() => {
     loadProducts();
     
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      if (user) {
-        loadRecommendations(user.id);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadRecommendations(session.user.id);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        loadRecommendations(currentUser.uid);
       } else {
         setRecommendations([]);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   const loadProducts = async () => {
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (data) setProducts(data);
+    const snapshot = await getDocs(collection(db, 'products'));
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    setProducts(data);
   };
 
   const loadRecommendations = async (userId: string) => {
-    const { data } = await supabase
-      .from('recommendations')
-      .select('*')
-      .eq('user_id', userId);
-    
-    if (data) setRecommendations(data);
+    const q = query(collection(db, 'recommendations'), where('user_id', '==', userId));
+    const snapshot = await getDocs(q);
+    const data = snapshot.docs.map(doc => doc.data() as Recommendation);
+    setRecommendations(data);
   };
 
-  const generateRecommendations = async () => {
+  const generateAIRecommendations = async () => {
     if (!user) {
       toast({ title: "Please sign in to get personalized recommendations" });
       return;
@@ -84,22 +75,58 @@ const Index = () => {
 
     setLoadingRecs(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-recommendations');
-      
-      if (error) throw error;
-      
-      if (data?.recommendations) {
-        await loadRecommendations(user.id);
-        toast({ 
-          title: "AI Recommendations Ready!", 
-          description: `Generated ${data.recommendations.length} personalized picks for you.`
-        });
-      }
+      // Get user interactions
+      const interactionsQuery = query(
+        collection(db, 'user_interactions'),
+        where('user_id', '==', user.uid)
+      );
+      const interactionsSnapshot = await getDocs(interactionsQuery);
+      const interactions = interactionsSnapshot.docs.map(doc => doc.data());
+
+      const viewedProductIds = interactions
+        .filter(i => i.interaction_type === 'view')
+        .map(i => i.product_id);
+      const cartProductIds = interactions
+        .filter(i => i.interaction_type === 'add_to_cart')
+        .map(i => i.product_id);
+
+      const viewedProducts = products.filter(p => viewedProductIds.includes(p.id));
+      const cartProducts = products.filter(p => cartProductIds.includes(p.id));
+
+      // Generate recommendations using Gemini
+      const recs = await generateRecommendations(viewedProducts, cartProducts, products);
+
+      // Delete old recommendations
+      const oldRecsQuery = query(
+        collection(db, 'recommendations'),
+        where('user_id', '==', user.uid)
+      );
+      const oldRecsSnapshot = await getDocs(oldRecsQuery);
+      await Promise.all(oldRecsSnapshot.docs.map(doc => deleteDoc(doc.ref)));
+
+      // Store new recommendations
+      await Promise.all(
+        recs.map(rec =>
+          addDoc(collection(db, 'recommendations'), {
+            user_id: user.uid,
+            product_id: rec.product_id,
+            reason: rec.reason,
+            score: rec.score,
+            created_at: Timestamp.now()
+          })
+        )
+      );
+
+      await loadRecommendations(user.uid);
+      toast({
+        title: "AI Recommendations Ready!",
+        description: `Generated ${recs.length} personalized picks for you.`
+      });
     } catch (error: any) {
-      toast({ 
-        title: "Error generating recommendations", 
+      toast({
+        title: "Error generating recommendations",
         description: error.message,
-        variant: "destructive" 
+        variant: "destructive"
       });
     } finally {
       setLoadingRecs(false);
@@ -113,33 +140,33 @@ const Index = () => {
     }
 
     // Track interaction
-    await supabase.from('user_interactions').insert({
-      user_id: user.id,
+    await addDoc(collection(db, 'user_interactions'), {
+      user_id: user.uid,
       product_id: productId,
-      interaction_type: 'add_to_cart'
+      interaction_type: 'add_to_cart',
+      created_at: Timestamp.now()
     });
 
     // Check if already in cart
-    const { data: existing } = await supabase
-      .from('cart_items')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('product_id', productId)
-      .single();
+    const cartQuery = query(
+      collection(db, 'cart_items'),
+      where('user_id', '==', user.uid),
+      where('product_id', '==', productId)
+    );
+    const cartSnapshot = await getDocs(cartQuery);
 
-    if (existing) {
-      await supabase
-        .from('cart_items')
-        .update({ quantity: existing.quantity + 1 })
-        .eq('id', existing.id);
+    if (!cartSnapshot.empty) {
+      const cartDoc = cartSnapshot.docs[0];
+      await updateDoc(doc(db, 'cart_items', cartDoc.id), {
+        quantity: cartDoc.data().quantity + 1
+      });
     } else {
-      await supabase
-        .from('cart_items')
-        .insert({
-          user_id: user.id,
-          product_id: productId,
-          quantity: 1
-        });
+      await addDoc(collection(db, 'cart_items'), {
+        user_id: user.uid,
+        product_id: productId,
+        quantity: 1,
+        created_at: Timestamp.now()
+      });
     }
 
     toast({ title: "Added to cart!" });
@@ -147,10 +174,11 @@ const Index = () => {
 
   const handleProductView = async (productId: string) => {
     if (user) {
-      await supabase.from('user_interactions').insert({
-        user_id: user.id,
+      await addDoc(collection(db, 'user_interactions'), {
+        user_id: user.uid,
         product_id: productId,
-        interaction_type: 'view'
+        interaction_type: 'view',
+        created_at: Timestamp.now()
       });
     }
   };
@@ -194,7 +222,7 @@ const Index = () => {
 
         {user ? (
           <Button 
-            onClick={generateRecommendations}
+            onClick={generateAIRecommendations}
             disabled={loadingRecs}
             className="bg-gradient-primary hover:opacity-90 text-white animate-scale-in"
             size="lg"
