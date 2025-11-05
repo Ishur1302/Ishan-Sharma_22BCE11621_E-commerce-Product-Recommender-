@@ -121,12 +121,21 @@ This project aims to develop an intelligent product recommendation system for e-
 3. Install required dependencies:  
    `npm i`
 
-4. Start the development server with hot reload:  
+4. **Important:** Create a `.env` file in the root directory (`.env` is excluded from GitHub for security):
+   - Copy `.env.example` to `.env`: `cp .env.example .env`
+   - Update the `.env` file with your own Firebase and Gemini API keys
+   - **DO NOT commit the `.env` file to GitHub**
+
+5. Initialize Firestore database:
+   - Start the dev server: `npm run dev`
+   - Open browser console and run: `initializeFirestore()` to seed products
+
+6. Start the development server with hot reload:  
    `npm run dev`
 
 Make sure [Node.js](https://nodejs.org/) and npm are installed. You can use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions easily.
 
-Open your browser and go to the URL displayed in terminal (usually http://localhost:3000) to see the application running locally.
+Open your browser and go to the URL displayed in terminal (usually http://localhost:8080) to see the application running locally.
 
 ***
 
