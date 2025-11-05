@@ -124,13 +124,21 @@ This project aims to develop an intelligent product recommendation system for e-
 4. **Important:** Create a `.env` file in the root directory (`.env` is excluded from GitHub for security):
    - Copy `.env.example` to `.env`: `cp .env.example .env`
    - Update the `.env` file with your own Firebase and Gemini API keys
+   - **Add `.env` to `.gitignore`** to prevent it from being committed
    - **DO NOT commit the `.env` file to GitHub**
 
-5. Initialize Firestore database:
+5. **Configure Firebase Security Rules:**
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Select your project
+   - Go to Firestore Database → Rules
+   - Copy the contents of `firestore.rules` and paste into the Firebase Console
+   - Publish the rules
+
+6. Initialize Firestore database:
    - Start the dev server: `npm run dev`
    - Open browser console and run: `initializeFirestore()` to seed products
 
-6. Start the development server with hot reload:  
+7. Start the development server with hot reload:  
    `npm run dev`
 
 Make sure [Node.js](https://nodejs.org/) and npm are installed. You can use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions easily.
