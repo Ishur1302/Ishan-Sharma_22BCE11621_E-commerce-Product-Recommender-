@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import { db, auth } from "@/lib/firebase";
-import { collection, getDocs, addDoc, query, where, doc, getDoc, updateDoc, Timestamp, deleteDoc } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { generateRecommendations } from "@/lib/gemini";
 import { Navbar } from "@/components/Navbar";
 import { ProductCard } from "@/components/ProductCard";
@@ -11,8 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import { SAMPLE_PRODUCTS } from "@/lib/initFirestore";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface Product {
   id: string;
@@ -44,41 +40,38 @@ const Index = () => {
   useEffect(() => {
     loadProducts();
     
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        loadRecommendations(currentUser.uid);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        loadRecommendations(session.user.id);
       } else {
         setRecommendations([]);
       }
     });
 
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   const loadProducts = async () => {
     try {
-      const snapshot = await getDocs(collection(db, 'products'));
-      if (snapshot.empty) {
-        const sampleWithIds = SAMPLE_PRODUCTS.map((p, idx) => ({ ...p, id: `sample-${idx}` })) as Product[];
-        setProducts(sampleWithIds);
-        toast({ title: "Showing sample products", description: "Your database is empty. Displaying local sample data." });
-        return;
-      }
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-      setProducts(data);
+      const { data, error } = await supabase.from('products').select('*');
+      if (error) throw error;
+      setProducts(data || []);
     } catch (error) {
-      const sampleWithIds = SAMPLE_PRODUCTS.map((p, idx) => ({ ...p, id: `sample-${idx}` })) as Product[];
-      setProducts(sampleWithIds);
-      toast({ title: "Offline sample mode", description: "Could not load from database. Showing local sample data." });
+      console.error('Error loading products:', error);
+      toast({ title: "Error loading products", variant: "destructive" });
     }
   };
 
   const loadRecommendations = async (userId: string) => {
-    const q = query(collection(db, 'recommendations'), where('user_id', '==', userId));
-    const snapshot = await getDocs(q);
-    const data = snapshot.docs.map(doc => doc.data() as Recommendation);
-    setRecommendations(data);
+    const { data, error } = await supabase
+      .from('recommendations')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (!error && data) {
+      setRecommendations(data);
+    }
   };
 
   const generateAIRecommendations = async () => {
@@ -98,17 +91,15 @@ const Index = () => {
       }
 
       // Authenticated path — use interactions and persist recs
-      const interactionsQuery = query(
-        collection(db, 'user_interactions'),
-        where('user_id', '==', user.uid)
-      );
-      const interactionsSnapshot = await getDocs(interactionsQuery);
-      const interactions = interactionsSnapshot.docs.map(doc => doc.data());
+      const { data: interactions } = await supabase
+        .from('user_interactions')
+        .select('*')
+        .eq('user_id', user.id);
 
-      const viewedProductIds = interactions
+      const viewedProductIds = (interactions || [])
         .filter(i => i.interaction_type === 'view')
         .map(i => i.product_id);
-      const cartProductIds = interactions
+      const cartProductIds = (interactions || [])
         .filter(i => i.interaction_type === 'add_to_cart')
         .map(i => i.product_id);
 
@@ -118,27 +109,22 @@ const Index = () => {
       recs = await generateRecommendations(viewedProducts, cartProducts, products);
 
       // Delete old recommendations
-      const oldRecsQuery = query(
-        collection(db, 'recommendations'),
-        where('user_id', '==', user.uid)
-      );
-      const oldRecsSnapshot = await getDocs(oldRecsQuery);
-      await Promise.all(oldRecsSnapshot.docs.map(doc => deleteDoc(doc.ref)));
+      await supabase
+        .from('recommendations')
+        .delete()
+        .eq('user_id', user.id);
 
       // Store new recommendations
-      await Promise.all(
-        recs.map(rec =>
-          addDoc(collection(db, 'recommendations'), {
-            user_id: user.uid,
-            product_id: rec.product_id,
-            reason: rec.reason,
-            score: rec.score,
-            created_at: Timestamp.now()
-          })
-        )
-      );
+      const recsToInsert = recs.map(rec => ({
+        user_id: user.id,
+        product_id: rec.product_id,
+        reason: rec.reason,
+        score: rec.score
+      }));
 
-      await loadRecommendations(user.uid);
+      await supabase.from('recommendations').insert(recsToInsert);
+
+      await loadRecommendations(user.id);
       toast({
         title: "AI Recommendations Ready!",
         description: `Generated ${recs.length} personalized picks for you.`
@@ -161,32 +147,30 @@ const Index = () => {
     }
 
     // Track interaction
-    await addDoc(collection(db, 'user_interactions'), {
-      user_id: user.uid,
+    await supabase.from('user_interactions').insert({
+      user_id: user.id,
       product_id: productId,
-      interaction_type: 'add_to_cart',
-      created_at: Timestamp.now()
+      interaction_type: 'add_to_cart'
     });
 
     // Check if already in cart
-    const cartQuery = query(
-      collection(db, 'cart_items'),
-      where('user_id', '==', user.uid),
-      where('product_id', '==', productId)
-    );
-    const cartSnapshot = await getDocs(cartQuery);
+    const { data: existingCart } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('product_id', productId)
+      .single();
 
-    if (!cartSnapshot.empty) {
-      const cartDoc = cartSnapshot.docs[0];
-      await updateDoc(doc(db, 'cart_items', cartDoc.id), {
-        quantity: cartDoc.data().quantity + 1
-      });
+    if (existingCart) {
+      await supabase
+        .from('cart_items')
+        .update({ quantity: existingCart.quantity + 1 })
+        .eq('id', existingCart.id);
     } else {
-      await addDoc(collection(db, 'cart_items'), {
-        user_id: user.uid,
+      await supabase.from('cart_items').insert({
+        user_id: user.id,
         product_id: productId,
-        quantity: 1,
-        created_at: Timestamp.now()
+        quantity: 1
       });
     }
 
@@ -195,11 +179,10 @@ const Index = () => {
 
   const handleProductView = async (productId: string) => {
     if (user) {
-      await addDoc(collection(db, 'user_interactions'), {
-        user_id: user.uid,
+      await supabase.from('user_interactions').insert({
+        user_id: user.id,
         product_id: productId,
-        interaction_type: 'view',
-        created_at: Timestamp.now()
+        interaction_type: 'view'
       });
     }
   };
@@ -218,8 +201,6 @@ const Index = () => {
   const otherProducts = filteredProducts.filter(p => 
     !recommendations.some(r => r.product_id === p.id)
   );
-
-  const isSampleData = products.length > 0 && products.every(p => p.id.startsWith("sample-"));
 
   const getRecommendation = (productId: string) => 
     recommendations.find(r => r.product_id === productId);
@@ -283,18 +264,7 @@ const Index = () => {
         </div>
       </section>
 
-      {isSampleData && (
-        <div className="container mx-auto px-4 pb-6">
-          <Alert>
-            <AlertTitle>Showing sample products</AlertTitle>
-            <AlertDescription>
-              Your Firestore 'products' collection appears empty. Add products in your Firebase Console (project: recoengine-28855) to see live data.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
- 
-       {/* Recommended Products */}
+      {/* Recommended Products */}
       {recommendedProducts.length > 0 && (
         <section className="container mx-auto px-4 pb-12">
           <div className="flex items-center gap-2 mb-6">
